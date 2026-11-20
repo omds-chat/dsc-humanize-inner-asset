@@ -1,0 +1,94 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://omds-chat.github.io/dsc-humanize-asset-template/schemas/asset-package.schema.json",
+  "title": "dsc-humanize-asset-package",
+  "description": "人性化资产包的元数据 asset.json。字段、取值与判定口径以 specs/asset-package-spec.md 为准;本 Schema 只表达其中的结构规则。",
+  "type": "object",
+  "properties": {
+    "formatVersion": {
+      "$ref": "#/$defs/semver",
+      "description": "格式版本,当前 1.0.0;加载方按主版本选择校验规则"
+    },
+    "id": {
+      "$ref": "#/$defs/packageId",
+      "description": "包标识,全局唯一,合集索引与来源记录都用它"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "\\S",
+      "description": "展示名,去掉首尾空白后不得为空"
+    },
+    "version": {
+      "$ref": "#/$defs/semver",
+      "description": "包内容版本,由作者递增;加载方不比较,只留痕"
+    },
+    "description": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "\\S",
+      "description": "一句话说明,供合集与界面展示"
+    },
+    "author": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "\\S",
+      "description": "署名,只表示归属,不构成签名或背书"
+    },
+    "license": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "\\S",
+      "description": "许可证标识,建议写 SPDX 标识;缺省表示作者未声明"
+    },
+    "types": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "description": "内容类型声明,至少一类;须与包内实际内容双向一致",
+      "items": {
+        "$ref": "#/$defs/contentType"
+      }
+    }
+  },
+  "required": [
+    "formatVersion",
+    "id",
+    "name",
+    "version",
+    "description",
+    "author",
+    "types"
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "semver": {
+      "type": "string",
+      "pattern": "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)$",
+      "description": "三段数字,不允许前导零",
+      "examples": [
+        "1.0.0",
+        "0.1.0"
+      ]
+    },
+    "packageId": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]{2,63}$",
+      "description": "小写字母开头,只允许小写字母、数字与连字符,长度 3 到 64",
+      "examples": [
+        "dsc-example-asset",
+        "dsc-persona-calm"
+      ]
+    },
+    "contentType": {
+      "type": "string",
+      "enum": [
+        "persona",
+        "labels",
+        "strategies",
+        "injection"
+      ],
+      "description": "内容类型标识:人物设定、分类标签集、策略规则、注入文本;不接受四类之外的取值"
+    }
+  }
+}

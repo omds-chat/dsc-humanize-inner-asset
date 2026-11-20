@@ -1,0 +1,94 @@
+name: verify-and-build
+
+# 本流程只做两件事: 校验合集, 生成未签名的 dist/。
+#
+# 整站签名不在本流程内: 资产包是纯数据, 合集页面的签名由发布流程用合集 EEC 私钥
+# 在 dist/ 上生成逐文件 .sig、web_files.json 与其签名, 并把证书复制为 eec.pem。
+# 本仓库不实现签名脚本, 也不持有任何私钥; 私钥只出现在发布流程的 secrets 里。
+#
+# 流程不联网取规范, 也不安装依赖: 校验脚本只用 Node 内置模块,
+# 规范与 Schema 以只读副本形式存放在 specs/ 与 schemas/。
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'assets/**'
+      - 'certs/**'
+      - 'schemas/**'
+      - 'specs/**'
+      - 'scripts/**'
+      - 'meta.json'
+      - 'assets.json'
+      - 'tags.json'
+      - '.github/workflows/verify-and-build.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Verify collection
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Show Node.js version
+        run: node --version
+
+      # 资产包规则自检: 只用内存构造的用例, 不读取合集内容。
+      - name: Self-test package rules
+        run: node scripts/verify-collection.mjs --dir . --self-test
+
+      # 合集自洽性校验: 结构、清单、资产包、标签词表与公开证书材料。
+      # 证书只做解析、链校验与公钥配对, 不生成也不替换。
+      - name: Verify collection
+        run: node scripts/verify-collection.mjs --dir .
+
+      - name: Write JSON report
+        if: always()
+        run: node scripts/verify-collection.mjs --dir . --json > verify-report.json || true
+
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: verify-report
+          path: verify-report.json
+          if-no-files-found: ignore
+
+  build:
+    name: Build unsigned distribution
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      # 构建前再校验一次: 构建脚本自身也会先校验, 失败即不写出 dist/。
+      - name: Build distribution
+        run: node scripts/build-collection.mjs --dir . --out dist
+
+      - name: Show distribution tree
+        run: find dist -type f | sort
+
+      - name: Upload unsigned distribution
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist-unsigned
+          path: dist

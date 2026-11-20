@@ -1,0 +1,16 @@
+# Agent Runtime
+node_modules/
+AGENTS.md
+.agent/
+.agents/
+temp/
+
+# build & release
+dist/
+*.log
+.DS_Store
+
+# 本地联调配置
+.env
+.env.*
+!.env.example

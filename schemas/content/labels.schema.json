@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://omds-chat.github.io/dsc-humanize-asset-template/schemas/content/labels.schema.json",
+  "title": "dsc-humanize-asset-labels",
+  "description": "分类标签集内容项,对应包内 labels/ 目录下的单个 JSON 文件。字段与判定口径见 specs/asset-package-spec.md 7.2。",
+  "type": "object",
+  "properties": {
+    "id": {
+      "$ref": "#/$defs/contentId",
+      "description": "标签标识,包内唯一;分类器只输出标签集内的标识"
+    },
+    "description": {
+      "$ref": "#/$defs/text",
+      "description": "语义说明,供人工核对与模型分类"
+    },
+    "keywords": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "description": "关键词,规则分类器按命中数量计分;缺省表示不参与规则分类",
+      "items": {
+        "$ref": "#/$defs/text"
+      }
+    },
+    "weight": {
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "description": "折算置信度时的权重,缺省 1"
+    }
+  },
+  "required": [
+    "id"
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "contentId": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]{1,63}$",
+      "description": "内容标识:小写字母开头,只允许小写字母、数字与连字符,长度 2 到 64;同一类型内唯一"
+    },
+    "semver": {
+      "type": "string",
+      "pattern": "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)$",
+      "description": "三段数字,不允许前导零"
+    },
+    "text": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "\\S",
+      "description": "非空文本"
+    }
+  }
+}

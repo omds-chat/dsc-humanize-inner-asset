@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://omds-chat.github.io/dsc-humanize-asset-template/schemas/content/injection.schema.json",
+  "title": "dsc-humanize-asset-injection",
+  "description": "注入文本内容项,对应包内 injection/ 目录下的单个 JSON 文件。字段与判定口径见 specs/asset-package-spec.md 7.4。",
+  "type": "object",
+  "properties": {
+    "id": {
+      "$ref": "#/$defs/contentId",
+      "description": "片段标识,包内唯一"
+    },
+    "name": {
+      "$ref": "#/$defs/text",
+      "description": "展示名"
+    },
+    "text": {
+      "$ref": "#/$defs/text",
+      "description": "注入到系统提示词的片段,纯文本,不含变量与占位符"
+    },
+    "description": {
+      "$ref": "#/$defs/text",
+      "description": "语义说明"
+    }
+  },
+  "required": [
+    "id",
+    "name",
+    "text"
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "contentId": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]{1,63}$",
+      "description": "内容标识:小写字母开头,只允许小写字母、数字与连字符,长度 2 到 64;同一类型内唯一"
+    },
+    "semver": {
+      "type": "string",
+      "pattern": "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)$",
+      "description": "三段数字,不允许前导零"
+    },
+    "text": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "\\S",
+      "description": "非空文本"
+    }
+  }
+}

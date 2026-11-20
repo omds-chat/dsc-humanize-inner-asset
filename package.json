@@ -1,0 +1,29 @@
+{
+  "name": "dsc-humanize-inner-asset",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "dsc-humanize 内置资产合集: 收录组织自研的人性化资产包,合集 EEC 由 dsc-humanize 根 CA 签发",
+  "license": "Apache-2.0",
+  "homepage": "https://omds-chat.github.io/dsc-humanize-inner-asset/",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/omds-chat/dsc-humanize-inner-asset.git"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "verify": "node scripts/verify-collection.mjs --dir .",
+    "verify:json": "node scripts/verify-collection.mjs --dir . --json",
+    "build": "node scripts/build-collection.mjs --dir . --out dist",
+    "self-test": "node scripts/verify-collection.mjs --dir . --self-test"
+  },
+  "keywords": [
+    "dsc",
+    "dsc-humanize",
+    "asset",
+    "collection",
+    "in-house"
+  ]
+}

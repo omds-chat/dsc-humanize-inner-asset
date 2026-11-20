@@ -1,0 +1,12 @@
+{
+  "spec_version": "1.0.0",
+  "format_version": "1.0.0",
+  "schemas": {
+    "package": "schemas/asset-package.schema.json",
+    "persona": "schemas/content/persona.schema.json",
+    "labels": "schemas/content/labels.schema.json",
+    "strategies": "schemas/content/strategies.schema.json",
+    "injection": "schemas/content/injection.schema.json"
+  },
+  "skeleton": "skeleton/dsc-example-asset"
+}
