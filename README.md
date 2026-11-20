@@ -2,7 +2,7 @@
 
 dsc-humanize 的内置资产合集: 收录组织自研、可导入的人性化资产包,合集页面由合集 EEC 签名发布。
 
-[English](README.en-US.md) | [文档索引](docs/index.md)
+[English](README.en-US.md) | [文档索引](docs/README.md)
 
 ## 定位
 

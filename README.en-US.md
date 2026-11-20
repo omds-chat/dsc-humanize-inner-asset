@@ -2,7 +2,7 @@
 
 The built-in asset collection for dsc-humanize: it collects in-house, importable humanization asset packages, and its pages are published under the collection EEC.
 
-[中文](README.md) | [Docs index](docs/index.md)
+[中文](README.md) | [Docs index](docs/README.md)
 
 ## Scope
 
