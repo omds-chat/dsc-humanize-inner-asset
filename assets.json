@@ -1,1 +1,17 @@
-[]
+[
+  {
+    "id": "dsc-humanize-assistant",
+    "author": "omds-chat",
+    "tag": [
+      "daily",
+      "work",
+      "technical"
+    ],
+    "types": [
+      "persona",
+      "labels",
+      "strategies",
+      "injection"
+    ]
+  }
+]

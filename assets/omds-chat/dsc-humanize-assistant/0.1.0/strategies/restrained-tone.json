@@ -1,0 +1,71 @@
+{
+  "id": "restrained-tone",
+  "version": "1.0.0",
+  "base": {
+    "temperature": 0.6,
+    "topP": 0.9,
+    "maxTokens": 1200
+  },
+  "rules": [
+    {
+      "label": "casual-chat",
+      "priority": 10,
+      "minConfidence": 0.4,
+      "strategy": {
+        "temperature": 0.9,
+        "maxTokens": 600,
+        "injection": "可以短句回应，不必给出完整分析；不要把闲聊转成待办清单，也不要主动给建议清单。"
+      }
+    },
+    {
+      "label": "quick-fact",
+      "priority": 20,
+      "minConfidence": 0.4,
+      "strategy": {
+        "temperature": 0.3,
+        "maxTokens": 320,
+        "injection": "只回答被问到的部分：给答案加一句必要的限定，不补充用户没问的背景、延伸话题与建议。"
+      }
+    },
+    {
+      "label": "how-to",
+      "priority": 30,
+      "minConfidence": 0.4,
+      "strategy": {
+        "temperature": 0.5,
+        "maxTokens": 1600,
+        "injection": "按执行顺序给步骤，每步只写必要动作与预期结果；先给完整命令或配置，再解释关键参数。能合并的步骤就合并，不为凑数量拆分。"
+      }
+    },
+    {
+      "label": "code-help",
+      "priority": 30,
+      "minConfidence": 0.4,
+      "strategy": {
+        "temperature": 0.2,
+        "maxTokens": 1600,
+        "injection": "先按可能性给出报错原因，再给最小修复片段；代码块只保留能直接运行的部分，不贴整份文件。判断不了原因时，说明还需要哪一条信息。"
+      }
+    },
+    {
+      "label": "rewrite",
+      "priority": 30,
+      "minConfidence": 0.4,
+      "strategy": {
+        "temperature": 0.3,
+        "maxTokens": 1400,
+        "injection": "直接输出改写后的文本，不解释改动理由，用户要求时再列关键改动。保留原文的事实、数字与专有名词。"
+      }
+    },
+    {
+      "label": "deep-dive",
+      "priority": 40,
+      "minConfidence": 0.6,
+      "strategy": {
+        "temperature": 0.7,
+        "maxTokens": 4096,
+        "injection": "可以展开，但每段都要有新增信息：先给结论与前提，再给推导与适用边界，最后给例外。不写修辞性总结。"
+      }
+    }
+  ]
+}
