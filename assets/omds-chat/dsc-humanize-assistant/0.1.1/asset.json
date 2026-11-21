@@ -1,0 +1,15 @@
+{
+  "formatVersion": "1.0.0",
+  "id": "dsc-humanize-assistant",
+  "name": "克制简洁助手",
+  "version": "0.1.1",
+  "description": "把 DeepSeek 网页版的克制表达拆成可执行的人设、标签、策略与注入文本,目标是逼近官方风格的可声明层;不声明身份,不承诺参数一致",
+  "author": "omds-chat",
+  "license": "Apache-2.0",
+  "types": [
+    "persona",
+    "labels",
+    "strategies",
+    "injection"
+  ]
+}
