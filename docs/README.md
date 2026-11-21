@@ -11,7 +11,7 @@
 | [assets/README.md](../assets/README.md) | 包目录与版本目录的结构规范 | 作者目录、包目录、版本目录的字段与命名,包元数据必填字段,同一 id 多版本的口径 | 新增作者、包或版本目录,核对目录结构与清单字段时 | 维护者、贡献者、Agent |
 | [docs/design/collection-and-trust.md](design/collection-and-trust.md) | 收录模式与信任锚的设计说明 | 职责边界、三层收录模式、校验阶段与失败语义、两级证书链与锚点、整站签名与包内容的关系、与插件生态和社区合集的分工、未定稿事项 | 判断某个失败该阻断还是警告,或改动校验、签名与证书边界时 | 维护者、Agent |
 | [specs/README.md](../specs/README.md) | 规范区的用途与更新约定 | 只读副本的来源、锁定方式、更新步骤、与 `meta.json` 的对应关系 | 升级资产包格式版本,或核对 Schema 来源时 | 维护者、Agent |
-| [docs/README.md](index.md) | 本仓库文档的索引入口 | 主表、冲突优先级、文档分层、维护约定 | 查找文档,或新增、删除、改写文档时 | 用户、贡献者、维护者、Agent |
+| [docs/README.md](README.md) | 本仓库文档的索引入口 | 主表、冲突优先级、文档分层、维护约定 | 查找文档,或新增、删除、改写文档时 | 用户、贡献者、维护者、Agent |
 
 索引范围是当前分支的源码文档。`dist/` 是构建副本,`temp/` 是本地临时目录,两者都不列入本索引。
 
@@ -34,7 +34,7 @@
 | 分层 | 文档 | 面向 | 写作边界 |
 |:---:|:---:|:---:|:---:|
 | 对外文档 | [README.md](../README.md)、[README.en-US.md](../README.en-US.md) | 使用者、外部贡献者 | 说明定位、收录条件、标签规则、信任链概览与命令入口;不展开实现细节与设计取舍 |
-| 维护者文档 | [assets/README.md](../assets/README.md)、[收录模式与信任锚](design/collection-and-trust.md)、[规范区](../specs/README.md)、[docs/README.md](index.md) | 组织维护者、接手者 | 写结构规范、失败语义、信任边界与理由;机制变更时与脚本同轮更新 |
+| 维护者文档 | [assets/README.md](../assets/README.md)、[收录模式与信任锚](design/collection-and-trust.md)、[规范区](../specs/README.md)、[docs/README.md](README.md) | 组织维护者、接手者 | 写结构规范、失败语义、信任边界与理由;机制变更时与脚本同轮更新 |
 | Agent 执行文档 | 各脚本顶部的用法注释与 `--help` 输出 | 执行校验与构建的 Agent | 只写可执行动作、输入输出与判据;不重复设计理由,判断依据仍回到第 1、2 层 |
 
 ## 四、维护约定
