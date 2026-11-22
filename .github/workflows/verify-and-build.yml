@@ -28,6 +28,11 @@ on:
       - '.github/workflows/verify-and-build.yml'
   workflow_dispatch:
 
+# 同名 artifact 的两次构建并发时会互相干扰,排队串行
+concurrency:
+  group: verify-and-build
+  cancel-in-progress: false
+
 permissions:
   contents: read
 
