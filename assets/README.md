@@ -53,6 +53,15 @@
 
 包的条目是封闭的:版本目录里只允许 `asset.json`、已声明的类型目录与可选的 `README.md`。不放签名材料,不放暂存与缓存,也不放用户当前使用状态。
 
+## 包层清单
+
+`assets/<author>/<id>/manifest.json` 是包层清单,由 `scripts/build-collection.mjs` 在构建时生成到 `dist/`,源码树里不放:
+
+- 覆盖包目录内除 `manifest.json` 与 `manifest.json.sig` 之外的全部文件,即 `versions.json` 与各版本目录下的包内文件;条目登记相对包目录的 `path`(如 `0.1.1/asset.json`)、`sha512` 与 `bytes`。
+- 不进版本目录:版本目录是一个完整资产包,条目封闭,放清单会触发包根条目校验,也让包内字节随分发方式变化。
+- 消费方安装时按清单逐文件取件并比对 SHA-512,缺清单会以 `manifest-missing` 整包拒绝;签名 `manifest.json.sig` 由发布流程的整站签名产出,与其它 `.json` 同一条 `openssl cms` 命令。
+- 清单内容变化时构建会删掉不再匹配的旧签名,不让失效签名留在产物里。
+
 ## 包元数据
 
 `asset.json` 的必填字段:

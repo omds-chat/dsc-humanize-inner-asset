@@ -17,6 +17,7 @@
     "verify": "node scripts/verify-collection.mjs --dir .",
     "verify:json": "node scripts/verify-collection.mjs --dir . --json",
     "build": "node scripts/build-collection.mjs --dir . --out dist",
+    "verify:dist": "node scripts/verify-collection.mjs --dir dist --spec-dir . --require-manifests --require-manifest-signatures",
     "self-test": "node scripts/verify-collection.mjs --dir . --self-test"
   },
   "keywords": [

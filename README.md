@@ -161,7 +161,29 @@ dsc-humanize-inner-asset/
     └── build-collection.mjs                生成 dist/
 ```
 
-构建产物 `dist/` 复制根目录的 `meta.json`、`assets.json`、`tags.json` 与 `assets/`、`certs/` 整树,并写出 `build-info.json`;发布流程的整站签名再在 `dist/` 上追加 `eec.pem`、逐文件 `.sig`、`web_files.json` 与其签名。
+构建产物 `dist/` 复制根目录的 `meta.json`、`assets.json`、`tags.json` 与 `assets/`、`certs/` 整树,为每个包目录写出一份包层清单 `manifest.json`,并写出 `build-info.json`;发布流程的整站签名再在 `dist/` 上追加 `eec.pem`、逐文件 `.sig`、`web_files.json` 与其签名。
+
+### 包层清单
+
+消费方(dsc-humanize 资产市场)安装一个资产包时,先取该包目录的 `manifest.json`,再按清单列出的路径逐文件取件并比对 SHA-512。缺清单会以 `manifest-missing` 整包拒绝,所以清单是发布产物的一部分,不是可选项。
+
+| 项目 | 内容 |
+|:---:|:---:|
+| 位置 | `dist/assets/<author>/<id>/manifest.json`;签名是同目录的 `manifest.json.sig` |
+| 覆盖 | 该包目录内除 `manifest.json` 与 `manifest.json.sig` 之外的全部文件,即 `versions.json` 与各版本目录下的包内文件 |
+| 条目 | `path` 相对包目录,如 `0.1.0/asset.json`;`sha512` 为 128 位小写十六进制;`bytes` 为文件字节数 |
+| 结构版本 | 顶层 `schemaVersion` 当前为 `1`,消费方按它判定清单形状 |
+| 生成 | `scripts/build-collection.mjs` 按 `dist/` 里的实际字节计算;源码树不放清单,版本目录保持封闭 |
+| 签名 | 发布流程的整站签名用合集 EEC 私钥对 `dist/` 内 `.json` 一并签名,`manifest.json` 的签名就是 `manifest.json.sig`(CMS DER,`-binary -md sha512 -nocerts -noattr`) |
+
+清单只到包这一层。组织约定的三层清单模型里还有发布目录根(L1)与作者目录(L2)两层,本合集当前不发布这两层:页面与索引的完整性由整站签名覆盖,清单只回答「这个包的每个文件是不是发布时的那一份」。
+
+| 校验手段 | 防什么 | 何时失败 |
+|:---:|:---:|:---:|
+| 整站签名(逐文件 `.sig` 与 `web_files.json`) | 分发出去的页面与索引被替换 | 消费方校验签名时 |
+| 包层清单(`manifest.json` 与 `manifest.json.sig`) | 包内文件被换成别的字节 | 消费方安装、逐文件比对 SHA-512 时;或发布前校验时 |
+
+两者都由同一张合集 EEC 签发,不构成循环:清单本身是 `.json`,也在整站签名覆盖面内,而清单不登记清单自身与 `manifest.json.sig`。换掉清单会让清单签名验不过,换掉包内文件会让清单比对失败,任一处改动都会在其中一侧暴露。签名细节见 [收录模式与信任锚](docs/design/collection-and-trust.md)。
 
 包的目录与字段规范见 [assets/README.md](assets/README.md)。
 
@@ -190,6 +212,12 @@ dsc-humanize-inner-asset/
 | `VERSIONS_INVALID` | 错误 | `versions.json` 结构或版本号非法 | 按降序、无重复、含 `latest` 修正 |
 | `VERSION_DIR_MISSING` | 错误 | 版本列表里有目录不存在 | 补目录,或从列表移除 |
 | `PACKAGE_*` | 错误 | 包不符合规范,具体码见校验输出 | 按输出的字段路径修包 |
+| `MANIFEST_MISSING` | 警告 | 包目录没有 `manifest.json`;`--require-manifests` 时按错误 | 跑一次构建;发布目录必须带清单 |
+| `MANIFEST_PATH_MISSING`、`MANIFEST_PATH_EXTRA` | 错误 | 清单漏记或多记文件 | 重新构建,不要手改清单 |
+| `MANIFEST_HASH_MISMATCH`、`MANIFEST_BYTES_MISMATCH` | 错误 | 清单登记的 SHA-512 或字节数与文件实际内容不一致 | 重新构建;已发布版本不改字节,内容改动走新版本 |
+| `MANIFEST_SIG_MISSING` | 警告 | 清单没有 `manifest.json.sig`;`--require-manifest-signatures` 时按错误 | 发布流程整站签名后才有,本地构建保持未签名 |
+| `MANIFEST_SIG_NOT_DER`、`MANIFEST_SIG_INVALID` | 错误 | 签名不是 CMS DER,或验签不通过 | 用同一张合集 EEC 重签,不要改清单 |
+| `MANIFEST_SIG_UNVERIFIABLE` | 警告 | 环境没有 openssl 或缺少证书材料,只核对了签名形状 | 在 CI 上用 `openssl cms -verify` 复核 |
 
 错误码与级别以校验脚本的输出为准;上表列出主要错误码,完整清单见 `node scripts/verify-collection.mjs --json` 的 `problems[].code`。
 
@@ -198,8 +226,8 @@ dsc-humanize-inner-asset/
 1. 在 `assets/<author>/<id>/<x.y.z>/` 放一个完整的资产包,元数据的 `id`、`version`、`author` 与目录名一致。
 2. 在该包目录的 `versions.json` 里登记版本,按降序排列,`latest` 指向当前版本。
 3. 在 `assets.json` 增加条目,写 `id`、`author`、`tag` 与 `types`;在 `assets/<author>/asset_manifest.json` 登记包标识。
-4. 本地跑 `node scripts/verify-collection.mjs --dir .`;通过后跑 `node scripts/build-collection.mjs --dir . --out dist`。
-5. CI 用合集 EEC 私钥对 `dist/` 做整站签名并发布。签名脚本不在本仓库,本仓库只准备未签名的 `dist/`。
+4. 本地跑 `node scripts/verify-collection.mjs --dir .`;通过后跑 `node scripts/build-collection.mjs --dir . --out dist`,构建会为每个包目录写出包层清单 `manifest.json`。
+5. CI 用合集 EEC 私钥对 `dist/` 做整站签名并发布。签名脚本不在本仓库,本仓库只准备未签名的 `dist/`;`manifest.json` 与其他 `.json` 一样在这一步被签名,产物是 `manifest.json.sig`。
 
 任何一步失败都中止发布,不产出部分发布内容。
 
@@ -209,11 +237,15 @@ dsc-humanize-inner-asset/
 node scripts/verify-collection.mjs --dir .            # 只读校验,不写文件
 node scripts/verify-collection.mjs --dir . --json     # 以 JSON 输出结果
 node scripts/verify-collection.mjs --dir . --self-test # 资产包规则自检
-node scripts/build-collection.mjs --dir . --out dist  # 校验通过后生成 dist/
+node scripts/build-collection.mjs --dir . --out dist  # 校验通过后生成 dist/ 与包层清单
+node scripts/verify-collection.mjs --dir dist --spec-dir . --require-manifests --require-manifest-signatures
+                                                      # 发布前复核 dist/:清单必须齐全,签名必须就位
 ```
 
-- 脚本零依赖,只用 Node 内置模块;不需要安装依赖,也不需要 openssl。
+- 脚本零依赖,只用 Node 内置模块;不需要安装依赖。清单验签用系统自带 `openssl`,没有 openssl 时只警告并核对签名形状。
 - 校验与构建不涉及任何私钥;证书只被解析与验链,不会被生成或替换。
+- 包层清单缺失默认只警告(存量兼容),清单存在但覆盖不全或哈希不符一律按错误;发布目录复核时用 `--require-manifests` 与 `--require-manifest-signatures` 把两种缺失升为错误。
+- `--spec-dir` 让校验读源码树的规范区;`dist/` 不含 `specs/`,复核发布目录时指向源码根目录。
 - 空合集也能直接通过:索引为空时没有包需要校验,构建仍会产出索引与公开材料。
 - `dist/` 是构建产物,不进版本库。
 
@@ -236,6 +268,7 @@ node scripts/build-collection.mjs --dir . --out dist  # 校验通过后生成 di
 - 收录不等于认证。整站签名只证明分发内容与签名者一致,不代表包的内容经过审查。
 - 只公开材料入库:根证书、EEC 证书与两份 `-secret.pub`。根私钥与 EEC 私钥永远不进本仓库。
 - 资产包不做代码签名。用户导入后可以改、可以再导出,没有锁定项。
+- 包层清单绑定发布时的字节:内容一变就换版本目录,清单随构建重写;清单内容变化时构建会删掉不再匹配的旧 `manifest.json.sig`,不让失效签名留在产物里。
 - 签名覆盖文件字节:换行、缩进或空白的任何改动都会让校验失败,仓库统一使用 LF。
 
 ## 许可

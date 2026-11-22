@@ -3,12 +3,13 @@
  * 资产合集自洽性校验,供 CI 与本地使用。
  *
  * 与 build-collection.mjs 共用 lib/collection-verify.mjs 的校验逻辑,只读不写。
- * 校验范围是收录结构、清单、资产包与标签词表,以及公开证书材料之间的关系;
- * 不做任何签名,也不签发、替换证书。
+ * 校验范围是收录结构、清单、资产包与标签词表、包层清单,以及公开证书材料之间的关系;
+ * 不做任何签名,也不签发、替换证书;清单签名的 CMS 验签交给 openssl,没有 openssl 时只警告。
  *
  * 用法:
  *   node scripts/verify-collection.mjs --dir .
  *   node scripts/verify-collection.mjs --dir . --json
+ *   node scripts/verify-collection.mjs --dir dist --require-manifests --require-manifest-signatures
  *   node scripts/verify-collection.mjs --self-test
  */
 import { formatProblems, verifyCollection } from './lib/collection-verify.mjs'
@@ -23,6 +24,9 @@ function usage() {
     '  --dir <目录>                合集根目录,默认当前目录',
     '  --collection-name <名称>    合集名称,默认取 meta.json 的 name',
     '  --json                      以 JSON 输出校验结果',
+    '  --spec-dir <目录>           规范区所在目录,默认取合集目录;校验不含 specs/ 的 dist/ 副本时指向源码树',
+    '  --require-manifests         缺包层清单按错误处理;校验发布目录时使用,源码树默认只警告',
+    '  --require-manifest-signatures 缺清单签名按错误处理;校验发布目录时使用',
     '  --self-test                 运行资产包规则自检,不校验合集',
     '  --help                      显示本说明',
     '',
@@ -30,7 +34,10 @@ function usage() {
 }
 
 function parseArgs(argv) {
-  const options = { dir: '.', collectionName: null, json: false, selfTest: false, help: false }
+  const options = {
+    dir: '.', collectionName: null, json: false, selfTest: false, help: false,
+    requireManifests: false, requireManifestSignatures: false, specDir: null,
+  }
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index]
     const separator = arg.indexOf('=')
@@ -47,6 +54,9 @@ function parseArgs(argv) {
       case '--dir': options.dir = take(); break
       case '--collection-name': options.collectionName = take(); break
       case '--json': options.json = true; break
+      case '--spec-dir': options.specDir = take(); break
+      case '--require-manifests': options.requireManifests = true; break
+      case '--require-manifest-signatures': options.requireManifestSignatures = true; break
       case '--self-test': options.selfTest = true; break
       case '--help':
       case '-h': options.help = true; break
@@ -93,7 +103,12 @@ function main() {
     return 0
   }
 
-  const result = verifyCollection(root, { collectionName: options.collectionName })
+  const result = verifyCollection(root, {
+    collectionName: options.collectionName,
+    requireManifests: options.requireManifests,
+    requireManifestSignatures: options.requireManifestSignatures,
+    specDir: options.specDir === null ? undefined : options.specDir,
+  })
 
   if (options.json) {
     const payload = {
@@ -117,7 +132,8 @@ function main() {
     + String(result.stats.authors) + ' 个作者,'
     + String(result.stats.packages) + ' 个资产包,'
     + String(result.stats.versions) + ' 个版本,'
-    + String(result.stats.contentItems) + ' 项内容'
+    + String(result.stats.contentItems) + ' 项内容,'
+    + '包层清单 ' + String(result.stats.manifests) + ' 份覆盖 ' + String(result.stats.manifestFiles) + ' 个文件'
   if (result.ok) {
     process.stdout.write('校验通过 ' + summary + ',警告 ' + String(result.warningCount) + ' 条' + String.fromCharCode(10))
   } else {

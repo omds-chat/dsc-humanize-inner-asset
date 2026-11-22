@@ -13,6 +13,7 @@ import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { X509Certificate, createPublicKey } from 'node:crypto'
 import { basename, join, resolve } from 'node:path'
 import { CONTENT_TYPE_SET, loadSpec, readPackageTree, validatePackage } from './asset-package.mjs'
+import { verifyPackageManifest } from './manifest.mjs'
 
 /** 合集根目录必需的文件。tags.json 是标签词表,缺词表等于不校验标签,不能当作可选文件 */
 export const ROOT_REQUIRED_FILES = ['meta.json', 'assets.json', 'tags.json']
@@ -493,7 +494,7 @@ function inspectPackageVersion({ entry, version, versionDir, versionRel, spec, s
   return summary
 }
 
-function inspectPackage({ root, entry, authorContext, spec, schemas, report, stats }) {
+function inspectPackage({ root, entry, authorContext, spec, schemas, report, stats, manifestOptions, certs }) {
   const packageRel = authorContext.authorRel + '/' + entry.id
   const packageDir = join(authorContext.authorDir, entry.id)
   if (!isDirectory(packageDir)) {
@@ -526,7 +527,30 @@ function inspectPackage({ root, entry, authorContext, spec, schemas, report, sta
     }
   }
 
-  return { id: entry.id, author: entry.author, latest: versions.latest, versions: versions.listed, types: entry.types }
+  // 包层清单:消费方安装时按它逐文件取件并比对 SHA-512,缺清单只警告(存量兼容),
+  // 清单存在但与内容不一致一律按错误,否则发布出去的清单会把消费方引到错误的字节上。
+  const manifest = verifyPackageManifest({
+    packageDir,
+    packageRel,
+    report,
+    certs,
+    requireManifest: manifestOptions.requireManifests,
+    requireSignature: manifestOptions.requireManifestSignatures,
+    verifySignature: manifestOptions.verifyManifestSignature,
+  })
+  if (manifest !== null) {
+    stats.manifests += 1
+    stats.manifestFiles += manifest.files
+  }
+
+  return {
+    id: entry.id,
+    author: entry.author,
+    latest: versions.latest,
+    versions: versions.listed,
+    types: entry.types,
+    manifest,
+  }
 }
 
 /* ---------- 入口 ---------- */
@@ -536,12 +560,23 @@ function inspectPackage({ root, entry, authorContext, spec, schemas, report, sta
  * @param {string} collectionDir 合集根目录
  * @param {object} [options] 选项
  * @param {string} [options.collectionName] 合集名称,默认取 meta.json 的 name
+ * @param {boolean} [options.requireManifests] 缺包层清单是否按错误处理;默认按警告,校验发布目录时打开
+ * @param {boolean} [options.requireManifestSignatures] 缺清单签名是否按错误处理;默认按警告
+ * @param {boolean} [options.verifyManifestSignature] 是否用 openssl 验清单签名,默认验;没有 openssl 时只警告
+ * @param {string} [options.specDir] 规范区所在目录,默认取合集目录;校验 dist/ 这类不含 specs/ 的副本时指向源码树
  * @returns {{ok: boolean, root: string, collectionName: string, errorCount: number, warningCount: number, problems: Array<object>, stats: object, packages: Array<object>, certificates: object}}
  */
 export function verifyCollection(collectionDir, options = {}) {
   const root = resolve(collectionDir)
   const problems = []
-  const stats = { authors: 0, packages: 0, versions: 0, contentItems: 0 }
+  const stats = { authors: 0, packages: 0, versions: 0, contentItems: 0, manifests: 0, manifestFiles: 0 }
+  const manifestOptions = {
+    requireManifests: options.requireManifests === true,
+    requireManifestSignatures: options.requireManifestSignatures === true,
+    verifyManifestSignature: options.verifyManifestSignature !== false,
+  }
+  // 清单签名用本合集自己的公开材料验:根证书是信任锚,EEC 是签名证书
+  const manifestCerts = { rootCertPath: join(root, CERT_ROOT_PATH), eecCertPath: join(root, CERT_EEC_PATH) }
   const packages = []
   let certificates = { root: null, eec: null }
   const report = {
@@ -576,7 +611,8 @@ export function verifyCollection(collectionDir, options = {}) {
   let spec
   let schemas
   try {
-    const loaded = loadSpec(root)
+    const specDir = options.specDir === undefined ? root : resolve(options.specDir)
+    const loaded = loadSpec(specDir)
     spec = loaded.spec
     schemas = loaded.schemas
   } catch (error) {
@@ -625,7 +661,9 @@ export function verifyCollection(collectionDir, options = {}) {
         '包 ' + entry.id + ' 未出现在 ' + authorContext.authorRel + '/asset_manifest.json 中',
         authorContext.authorRel + '/asset_manifest.json')
     }
-    const packageIndex = inspectPackage({ root, entry, authorContext, spec, schemas, report, stats })
+    const packageIndex = inspectPackage({
+      root, entry, authorContext, spec, schemas, report, stats, manifestOptions, certs: manifestCerts,
+    })
     if (packageIndex) packages.push(packageIndex)
   })
 
@@ -643,11 +681,18 @@ export function verifyCollection(collectionDir, options = {}) {
     if (!context) return
     stats.authors += 1
     context.presentDirs.forEach((id) => {
-      if (!indexedKeys.has(context.author + '/' + id)) {
-        report.warn('PACKAGE_NOT_INDEXED',
-          '包目录 ' + context.authorRel + '/' + id + ' 存在,但 assets.json 里没有对应条目',
-          'assets.json')
-      }
+      if (indexedKeys.has(context.author + '/' + id)) return
+      report.warn('PACKAGE_NOT_INDEXED',
+        '包目录 ' + context.authorRel + '/' + id + ' 存在,但 assets.json 里没有对应条目',
+        'assets.json')
+      // 未索引的包目录也要核对其清单:它同样会被复制进 dist/,发布后照样能被消费方取到
+      verifyPackageManifest({
+        packageDir: join(context.authorDir, id),
+        packageRel: context.authorRel + '/' + id,
+        report,
+        certs: manifestCerts,
+        verifySignature: manifestOptions.verifyManifestSignature,
+      })
     })
   })
 

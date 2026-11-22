@@ -161,7 +161,29 @@ dsc-humanize-inner-asset/
     └── build-collection.mjs                produces dist/
 ```
 
-The build output `dist/` copies `meta.json`, `assets.json`, `tags.json` and the whole `assets/` and `certs/` trees, then writes `build-info.json`; the site-signing step adds `eec.pem`, per-file `.sig`, `web_files.json` and its signature.
+The build output `dist/` copies `meta.json`, `assets.json`, `tags.json` and the whole `assets/` and `certs/` trees, writes one package-level manifest `manifest.json` per package directory, then writes `build-info.json`; the site-signing step adds `eec.pem`, per-file `.sig`, `web_files.json` and its signature.
+
+### Package manifest
+
+To install a package, the consumer (the dsc-humanize asset market) first fetches `manifest.json` from the package directory, then fetches every listed file and compares its SHA-512. A missing manifest rejects the whole package with `manifest-missing`, so the manifest is part of the release artifact, not an option.
+
+| Item | Content |
+|:---:|:---:|
+| Location | `dist/assets/<author>/<id>/manifest.json`; its signature is `manifest.json.sig` next to it |
+| Coverage | Every file in that package directory except `manifest.json` and `manifest.json.sig`, that is `versions.json` plus all files of every version directory |
+| Entries | `path` relative to the package directory, such as `0.1.0/asset.json`; `sha512` as 128 lowercase hex digits; `bytes` as the file size |
+| Schema version | Top-level `schemaVersion` is `1`; the consumer uses it to decide the manifest shape |
+| Generation | `scripts/build-collection.mjs` hashes the actual bytes in `dist/`; the source tree carries no manifest and version directories stay closed |
+| Signature | The site-signing step signs every `.json` under `dist/` with the collection EEC private key, so the signature of `manifest.json` is `manifest.json.sig` (CMS DER, `-binary -md sha512 -nocerts -noattr`) |
+
+The manifest stops at the package layer. The organization's three-layer manifest model also has a release-root layer (L1) and an author layer (L2); this collection publishes neither, because the integrity of pages and indexes is covered by the site signature, and the manifest only answers "is every file of this package the one that was released".
+
+| Control | What it protects | When it fails |
+|:---:|:---:|:---:|
+| Site signature (per-file `.sig` plus `web_files.json`) | Pages and indexes replaced after release | When the consumer verifies the signature |
+| Package manifest (`manifest.json` plus `manifest.json.sig`) | Package files replaced with different bytes | When the consumer installs and compares SHA-512, or before release when verification runs |
+
+Both are issued by the same collection EEC and do not form a cycle: the manifest is itself a `.json` and is therefore covered by the site signature, while the manifest does not list itself or `manifest.json.sig`. Replacing the manifest breaks its own signature; replacing a package file breaks the manifest comparison. Either change surfaces on one side.
 
 Directory and field rules are in [assets/README.md](assets/README.md).
 
@@ -190,6 +212,12 @@ Tags must come from `tags.json`; undeclared tags are rejected by validation.
 | `VERSIONS_INVALID` | Error | Malformed `versions.json` or version numbers | Descending, unique, containing `latest` |
 | `VERSION_DIR_MISSING` | Error | A listed version has no directory | Add the directory or drop the version |
 | `PACKAGE_*` | Error | The package breaks the specification; see the reported code | Fix the package at the reported field path |
+| `MANIFEST_MISSING` | Warning | The package directory has no `manifest.json`; an error under `--require-manifests` | Run a build; a release directory must carry the manifest |
+| `MANIFEST_PATH_MISSING`, `MANIFEST_PATH_EXTRA` | Error | The manifest misses a file or lists a missing one | Rebuild; do not edit the manifest by hand |
+| `MANIFEST_HASH_MISMATCH`, `MANIFEST_BYTES_MISMATCH` | Error | The recorded SHA-512 or byte count differs from the actual file | Rebuild; released version directories never change bytes, content changes go into a new version |
+| `MANIFEST_SIG_MISSING` | Warning | The manifest has no `manifest.json.sig`; an error under `--require-manifest-signatures` | Appears after the release signing step; local builds stay unsigned |
+| `MANIFEST_SIG_NOT_DER`, `MANIFEST_SIG_INVALID` | Error | The signature is not CMS DER, or verification fails | Re-sign with the same collection EEC; do not edit the manifest |
+| `MANIFEST_SIG_UNVERIFIABLE` | Warning | No openssl or no certificate material, so only the signature shape was checked | Recheck in CI with `openssl cms -verify` |
 
 Codes and levels come from the validation scripts; the table lists the main ones, and the complete list is in `problems[].code` from `node scripts/verify-collection.mjs --json`.
 
@@ -198,8 +226,8 @@ Codes and levels come from the validation scripts; the table lists the main ones
 1. Place a complete asset package under `assets/<author>/<id>/<x.y.z>/`; its `id`, `version` and `author` must match the paths.
 2. Register the version in that package's `versions.json`, highest first, with `latest` pointing at the current version.
 3. Add an entry to `assets.json` with `id`, `author`, `tag` and `types`, and register the package id in `assets/<author>/asset_manifest.json`.
-4. Run `node scripts/verify-collection.mjs --dir .`; then `node scripts/build-collection.mjs --dir . --out dist`.
-5. CI signs `dist/` with the collection EEC private key and publishes it. The signing step lives outside this repository; this repository only prepares an unsigned `dist/`.
+4. Run `node scripts/verify-collection.mjs --dir .`; then `node scripts/build-collection.mjs --dir . --out dist`, which writes the package manifest `manifest.json` for every package directory.
+5. CI signs `dist/` with the collection EEC private key and publishes it. The signing step lives outside this repository; this repository only prepares an unsigned `dist/`, and `manifest.json` is signed there like every other `.json`, producing `manifest.json.sig`.
 
 Any failed step aborts publication; no partial output is published.
 
@@ -209,11 +237,15 @@ Any failed step aborts publication; no partial output is published.
 node scripts/verify-collection.mjs --dir .             # read-only verification
 node scripts/verify-collection.mjs --dir . --json      # JSON output
 node scripts/verify-collection.mjs --dir . --self-test # package rule self-test
-node scripts/build-collection.mjs --dir . --out dist   # build after verification
+node scripts/build-collection.mjs --dir . --out dist   # build after verification, including manifests
+node scripts/verify-collection.mjs --dir dist --spec-dir . --require-manifests --require-manifest-signatures
+                                                       # pre-release check of dist/: manifests and signatures must be in place
 ```
 
-- The scripts have no dependencies and use Node built-ins only; no install step and no openssl required.
+- The scripts have no dependencies and use Node built-ins only; no install step. Manifest signatures are verified with the system `openssl`; without openssl the check only warns and inspects the signature shape.
 - Verification and build use no private keys; certificates are only parsed and chained, never generated or replaced.
+- A missing package manifest is only a warning by default (backward compatible), while an incomplete manifest or a hash mismatch is always an error; use `--require-manifests` and `--require-manifest-signatures` to turn the two absences into errors when checking a release directory.
+- `--spec-dir` lets verification read the specification area from the source tree, because `dist/` does not contain `specs/`.
 - An empty collection passes: with no packages there is nothing to validate, and the build still emits the index and public material.
 - `dist/` is a build artifact and is not committed.
 
@@ -236,6 +268,7 @@ Development of this collection depends on the dsce network, at minimum dsce itse
 - Inclusion is not endorsement. The site signature only proves that the distributed content matches its signer; it does not mean the content was reviewed.
 - Only public material is committed: the root certificate, the EEC certificate and two `-secret.pub` files. Root and EEC private keys never enter this repository.
 - Asset packages are not code-signed. Once imported, users may edit and export them; nothing is locked.
+- The package manifest binds the released bytes: any content change goes into a new version directory and the build rewrites the manifest; when manifest content changes, the build deletes the no-longer-matching `manifest.json.sig` so a stale signature never ships.
 - Signatures cover file bytes: any change in line endings, indentation or whitespace breaks verification, so the repository uses LF.
 
 ## License

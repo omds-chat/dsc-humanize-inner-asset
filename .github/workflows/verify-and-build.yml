@@ -1,6 +1,9 @@
 name: verify-and-build
 
-# 本流程只做两件事: 校验合集, 生成未签名的 dist/。
+# 本流程只做三件事: 校验合集, 生成未签名的 dist/, 复核 dist/ 里的包层清单。
+#
+# 包层清单 manifest.json 由构建写进每个包目录; 它是普通 .json, 因此发布流程的整站签名
+# 会在 dist/ 上一并生成 manifest.json.sig, 与逐文件 .sig、web_files.json、eec.pem 同一轮产出。
 #
 # 整站签名不在本流程内: 资产包是纯数据, 合集页面的签名由发布流程用合集 EEC 私钥
 # 在 dist/ 上生成逐文件 .sig、web_files.json 与其签名, 并把证书复制为 eec.pem。
@@ -86,6 +89,11 @@ jobs:
 
       - name: Show distribution tree
         run: find dist -type f | sort
+
+      # 发布产物必须带包层清单: 签名前先确认每个包目录都有 manifest.json 且与文件哈希一致。
+      # 这一步还没有 manifest.json.sig(签名由发布流程做), 所以只要求清单齐全。
+      - name: Verify package manifests in dist
+        run: node scripts/verify-collection.mjs --dir dist --spec-dir . --require-manifests
 
       - name: Upload unsigned distribution
         uses: actions/upload-artifact@v4
