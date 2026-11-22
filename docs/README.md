@@ -10,6 +10,7 @@
 | [README.en-US.md](../README.en-US.md) | 中文总览的英文版本 | 与中文 README 对应的英文说明 | 读者不使用中文,或需要引用英文口径时 | 用户、贡献者 |
 | [assets/README.md](../assets/README.md) | 包目录与版本目录的结构规范 | 作者目录、包目录、版本目录的字段与命名,包层清单位置与覆盖,包元数据必填字段,同一 id 多版本的口径 | 新增作者、包或版本目录,核对目录结构与清单字段时 | 维护者、贡献者、Agent |
 | [docs/design/collection-and-trust.md](design/collection-and-trust.md) | 收录模式与信任锚的设计说明 | 职责边界、三层收录模式、包层清单在哪一层、校验阶段与失败语义、两级证书链与锚点、整站签名与包层清单各防什么、与插件生态和社区合集的分工、未定稿事项 | 判断某个失败该阻断还是警告,或改动校验、签名与证书边界时 | 维护者、Agent |
+| [docs/design/pages-artifacts.md](design/pages-artifacts.md) | Pages 环境文件结构与分支结构 | 站点文件的三个来源、部署后的站点树、入口地址与版本化路径、本仓只有 main 一条分支与组织规范的对应、发布流程未实现的现状 | 核对部署出去的站点长什么样,或改动构建产物集合与发布流程时 | 维护者、Agent |
 | [specs/README.md](../specs/README.md) | 规范区的用途与更新约定 | 只读副本的来源、锁定方式、更新步骤、与 `meta.json` 的对应关系 | 升级资产包格式版本,或核对 Schema 来源时 | 维护者、Agent |
 | [docs/README.md](README.md) | 本仓库文档的索引入口 | 主表、冲突优先级、文档分层、维护约定 | 查找文档,或新增、删除、改写文档时 | 用户、贡献者、维护者、Agent |
 
@@ -34,7 +35,7 @@
 | 分层 | 文档 | 面向 | 写作边界 |
 |:---:|:---:|:---:|:---:|
 | 对外文档 | [README.md](../README.md)、[README.en-US.md](../README.en-US.md) | 使用者、外部贡献者 | 说明定位、收录条件、标签规则、信任链概览与命令入口;不展开实现细节与设计取舍 |
-| 维护者文档 | [assets/README.md](../assets/README.md)、[收录模式与信任锚](design/collection-and-trust.md)、[规范区](../specs/README.md)、[docs/README.md](README.md) | 组织维护者、接手者 | 写结构规范、失败语义、信任边界与理由;机制变更时与脚本同轮更新 |
+| 维护者文档 | [assets/README.md](../assets/README.md)、[收录模式与信任锚](design/collection-and-trust.md)、[Pages 环境文件结构与分支结构](design/pages-artifacts.md)、[规范区](../specs/README.md)、[docs/README.md](README.md) | 组织维护者、接手者 | 写结构规范、失败语义、信任边界与理由;机制变更时与脚本同轮更新 |
 | Agent 执行文档 | 各脚本顶部的用法注释与 `--help` 输出 | 执行校验与构建的 Agent | 只写可执行动作、输入输出与判据;不重复设计理由,判断依据仍回到第 1、2 层 |
 
 ## 四、维护约定
@@ -46,8 +47,9 @@
 |:---:|:---:|
 | 校验规则、错误码或错误级别 | [README.md](../README.md) 的错误码说明、[收录模式与信任锚](design/collection-and-trust.md) 第三节 |
 | 目录、版本或清单字段 | [assets/README.md](../assets/README.md)、[README.md](../README.md) 的索引说明 |
-| 构建产物集合或签名覆盖 | [收录模式与信任锚](design/collection-and-trust.md) 第五节、[README.md](../README.md) 的构建说明 |
+| 构建产物集合或签名覆盖 | [收录模式与信任锚](design/collection-and-trust.md) 第五节、[Pages 环境文件结构与分支结构](design/pages-artifacts.md) 第一、二节、[README.md](../README.md) 的构建说明 |
 | 规范版本或 Schema 路径 | [specs/README.md](../specs/README.md)、[meta.json](../meta.json)、[README.md](../README.md) 的格式版本说明 |
+| 发布形态、站点结构或分支情况 | [Pages 环境文件结构与分支结构](design/pages-artifacts.md)、本索引主表 |
 | 文档新增或删除 | 本索引主表与分层表 |
 
 - 错误码以校验脚本返回的 `code` 为准,新增、改名或调整级别时同步上表列出的文档。

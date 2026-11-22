@@ -10,7 +10,7 @@ dsc-humanize 的内置资产合集: 收录组织自研、可导入的人性化�
 
 - 收录对象是组织自研并维护的资产包,不面向第三方投稿;社区投稿由 [awesome-dsc-humanize-asset](https://github.com/omds-chat/awesome-dsc-humanize-asset) 收录。
 - 资产包是纯数据: 不含代码,不由宿主加载,也不做代码签名。
-- 分发内容就是合集本身: 没有独立的索引服务,构建产物 `dist/` 直接部署为 Pages 站点。
+- 分发内容就是合集本身: 没有独立的索引服务,构建产物 `dist/` 即站点内容;签名与部署属于发布流程,当前不在本仓库实现,现状见 [Pages 环境文件结构与分支结构](docs/design/pages-artifacts.md) 第五节。
 - 收录不等于认证。本仓库只保证分发内容与签名一致,不审查包的内容质量。
 
 ## 在资产生态里的位置
@@ -150,8 +150,10 @@ dsc-humanize-inner-asset/
 │               ├── strategies/
 │               └── injection/
 ├── docs/
-│   ├── index.md
-│   └── design/collection-and-trust.md
+│   ├── README.md                             文档索引
+│   └── design/
+│       ├── collection-and-trust.md           收录模式与信任锚
+│       └── pages-artifacts.md               Pages 环境文件结构与分支结构
 ├── schemas/                                格式 Schema 的只读副本
 ├── specs/                                  规范版本与更新约定
 └── scripts/
@@ -162,6 +164,8 @@ dsc-humanize-inner-asset/
 ```
 
 构建产物 `dist/` 复制根目录的 `meta.json`、`assets.json`、`tags.json` 与 `assets/`、`certs/` 整树,为每个包目录写出一份包层清单 `manifest.json`,并写出 `build-info.json`;发布流程的整站签名再在 `dist/` 上追加 `eec.pem`、逐文件 `.sig`、`web_files.json` 与其签名。
+
+部署后的站点根里每个文件由谁生成、是否进入签名覆盖面,与本仓库的分支情况,见 [Pages 环境文件结构与分支结构](docs/design/pages-artifacts.md)。
 
 ### 包层清单
 
